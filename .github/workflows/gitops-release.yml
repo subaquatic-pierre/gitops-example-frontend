@@ -64,11 +64,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Add the correctly named file
-          git add environments/production/frontend/kustomization.yaml
+          git add environments/development/frontend/kustomization.yaml
 
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "chore(frontend): bump production image tag to ${{ env.VERSION }}"
+            git commit -m "chore(frontend): bump development image tag to ${{ env.VERSION }}"
             git push origin ${{ env.GITOPS_BRANCH }}
           fi
