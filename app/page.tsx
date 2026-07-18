@@ -53,7 +53,7 @@ export default function Home() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span>Project</span>
+            <span>StackOps</span>
           </div>
           <nav className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>
