@@ -3,12 +3,11 @@ name: Build, Push, and Update GitOps
 on:
   push:
     tags:
-      - 'v*' # Triggers workflow on tag push (e.g., v1.0.0, v2.1.3)
+      - "v*" # Triggers workflow on tag push (e.g., v1.0.0, v2.1.3)
 
 env:
-  # Update these placeholders with your actual values
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/gitops-example-frontend
-  GITOPS_REPO: your-github-user-or-org/your-gitops-repo
+  GITOPS_REPO: subaquatic-pierre/gitops-example
   GITOPS_BRANCH: main
 
 jobs:
@@ -20,17 +19,17 @@ jobs:
 
       - name: Get tag version
         id: get_version
-        # Extracts the version tag (e.g. v1.0.0) from the GitHub reference
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Create Docker Config
+        env:
+          DOCKER_CONFIG_CONTENT: ${{ secrets.DOCKER_CONFIG_JSON }}
+        run: |
+          mkdir -p ~/.docker
+          echo "$DOCKER_CONFIG_CONTENT" > ~/.docker/config.json
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
@@ -38,7 +37,6 @@ jobs:
           context: .
           file: Dockerfile.prod
           push: true
-          # Tags the image with both the specific version and 'latest'
           tags: |
             ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
             ${{ env.IMAGE_NAME }}:latest
@@ -49,22 +47,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.GITOPS_REPO }}
-          # You need to create a Personal Access Token (PAT) with repo scopes 
-          # and add it to your current repository's secrets as GITOPS_PAT
           token: ${{ secrets.GITOPS_PAT }}
           path: gitops-repo
 
       - name: Update Image Tag in GitOps Repo
-        working-directory: gitops-repo/environments/production/frontend
+        working-directory: gitops-repo/environments/development/frontend
         run: |
-          # 1. Option A (Using standard kustomize tool for kustomization.yaml):
-          # kustomize edit set image your-image-placeholder=${{ env.IMAGE_NAME }}:${{ env.VERSION }}
-          
-          # 2. Option B (Using sed to manually replace newTag inside kustomize.yaml as requested):
-          # This assumes your kustomize.yaml has a line like `newTag: v1.0.0`
-          sed -i -E "s/newTag: .*/newTag: ${{ env.VERSION }}/g" kustomize.yaml
-
-          # Verify changes were made
+          # Use sed to update newTag in kustomization.yaml
+          sed -i -E "s/newTag: .*/newTag: ${{ env.VERSION }}/g" kustomization.yaml
           git diff
 
       - name: Commit and Push Changes to GitOps Repo
@@ -72,11 +62,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Add the changed files
-          git add environments/production/frontend/kustomize.yaml
-          
-          # Only commit and push if there are changes
+
+          # Add the correctly named file
+          git add environments/production/frontend/kustomization.yaml
+
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
